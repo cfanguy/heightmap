@@ -18,46 +18,44 @@
     camera.setPosition(new BABYLON.Vector3(0, 0, 150));
     camera.target = new BABYLON.Vector3(3, 0, 0);
 
-    window.addEventListener("mousemove", function (evt) {
+    canvas.addEventListener("mousemove", function (evt) {
         evt.preventDefault();
 
         if (rightclickdown) {
             var newX = mouseX - evt.x;
             var newY = mouseY - evt.y
-
-            console.log(camera.target);
-            console.log(newX);
-            console.log(newY);
-
-            cameraX = camera.target.x + (newX * 0.1);
-            cameraY = camera.target.y + (newY * 0.1);
-
+            cameraX = camera.target.x + (newX * 0.01);
+            cameraY = camera.target.y + (newY * 0.01);
             camera.target = new BABYLON.Vector3(cameraX, cameraY, 0);
-        }
-    });
 
-    window.addEventListener("mousedown", function (evt) {
+            scene.activeCamera.alpha = alpha_save;
+            scene.activeCamera.beta = beta_save;
+        }
+    }, false);
+    canvas.addEventListener("mousedown", function (evt) {
         evt.preventDefault();
+
         if (evt.button == 2) // Right click
         {
             rightclickdown = 1;
             mouseX = evt.x;
             mouseY = evt.y;
+
+            alpha_save = scene.activeCamera.alpha;
+            beta_save = scene.activeCamera.beta;
         }
         else {
             rightclickdown = 0;
         }
-    });
-    window.addEventListener("mouseup", function (evt) {
+    }, false);
+    canvas.addEventListener("mouseup", function (evt) {
         if (rightclickdown == 1) {
             rightclickdown = 0;
         }
-    });
-    window.addEventListener("contextmenu", function (evt) {
+    }, false);
+    canvas.addEventListener("contextmenu", function (evt) {
         evt.preventDefault();
-    });
-
-    
+    }, false);
 
     // Ground
     var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
