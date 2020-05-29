@@ -3,7 +3,15 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+   integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+   crossorigin=""/>
+
         <title>Babylon - Height Map</title>
+
+        <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+        integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+        crossorigin=""></script>
         
         <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
@@ -21,6 +29,8 @@
         <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
         <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
 
+
+
         <style>
             html, body {
                 overflow: hidden;
@@ -30,60 +40,66 @@
                 padding: 0;
             }
 
+            #canvasScene {
+                float:left;
+                height:100%;
+                width:49%;
+                background-color: black;
+            }
             #renderCanvas {
                 width: 100%;
                 height: 100%;
                 touch-action: none;
             }
+
+            #mapDiv {
+                float:right;
+                height:100%;
+                width:51%;
+            }
+            #map {
+                height: 100%;
+                width: 100%;
+            }
         </style>
     </head>
 <body>
-    <canvas id="renderCanvas"></canvas>
+    <div id="canvasScene">
+        <canvas id="renderCanvas"></canvas>
+    </div>
+    <div id="mapDiv">
+        <div id="map"></div>
+    </div>
+    
     <script>
         var canvas = document.getElementById("renderCanvas");
 
+        var camera = null;
         var engine = null;
         var scene = null;
         var sceneToRender = null;
         var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }); };
-        var createScene = function () {
+        var createScene = function (footprint) {
             var scene = new BABYLON.Scene(engine);
         
             // Light
-            var spot = new BABYLON.PointLight("spot", new BABYLON.Vector3(0, 30, 10), scene);
+            var spot = new BABYLON.PointLight("spot", new BABYLON.Vector3(0, 700, 10), scene);
             spot.diffuse = new BABYLON.Color3(1, 1, 1);
             spot.specular = new BABYLON.Color3(0, 0, 0);
         
             // Camera
-            var camera = new BABYLON.ArcRotateCamera("Camera", 0, 0.8, 100, BABYLON.Vector3.Zero(), scene);
+            camera = new BABYLON.ArcRotateCamera("Camera", -1.55, 0.8, 850, BABYLON.Vector3.Zero(), scene);
             camera.lowerBetaLimit = 0.1;
             camera.upperBetaLimit = (Math.PI / 2) * 0.9;
             camera.lowerRadiusLimit = 30;
-            camera.upperRadiusLimit = 150;
+            camera.upperRadiusLimit = 2000;
             camera.attachControl(canvas, true);
-
-            var camerasBorderFunction = function () {
-            //Angle
-            if (camera.beta < 0.1)
-                camera.beta = 0.1;
-            else if (camera.beta > (Math.PI / 2) * 0.9)
-                camera.beta = (Math.PI / 2) * 0.9;
-
-            //Zoom
-            if (camera.radius > 150)
-                camera.radius = 150;
-
-            if (camera.radius < 30)
-                camera.radius = 30;
-            };
-
-            scene.registerBeforeRender(camerasBorderFunction);
         
             // Ground
             var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
-            groundMaterial.diffuseTexture = new BABYLON.Texture("textures/color_middle.png", scene);
+            groundMaterial.diffuseTexture = new BABYLON.Texture("textures/color_" + footprint, scene);
         
-            var ground = BABYLON.Mesh.CreateGroundFromHeightMap("ground", "textures/middle.png", 200, 200, 250, 0, 10, scene, false);
+            var ground = BABYLON.Mesh.CreateGroundFromHeightMap("ground", "textures/" + footprint, 628, 628, 100, 0, 100, scene, false);
             ground.material = groundMaterial;
         
             //Sphere to see the light's position
@@ -92,7 +108,7 @@
             sun.material.emissiveColor = new BABYLON.Color3(1, 1, 0);
         
             // Skybox
-            var skybox = BABYLON.Mesh.CreateBox("skyBox", 800.0, scene);
+            var skybox = BABYLON.Mesh.CreateBox("skyBox", 3000.0, scene);
             var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
             skyboxMaterial.backFaceCulling = false;
             skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("textures/skybox", scene);
@@ -106,34 +122,55 @@
             scene.registerBeforeRender(function () {
                 sun.position = spot.position;
                 spot.position.x = 0;
-                //if (spot.position.x < -90)
-                  //  spot.position.x = 100;
             });
         
             return scene;
         }
 
-        var engine;
-        try {
-            engine = createDefaultEngine();
-        } catch(e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
-            engine = createDefaultEngine();
-        }
-        if (!engine) throw 'engine should not be null.';
-        scene = createScene();;
-        sceneToRender = scene
-
-        engine.runRenderLoop(function () {
-            if (sceneToRender) {
-                sceneToRender.render();
+        function startScene(footprint) {
+            var engine;
+            try {
+                engine = createDefaultEngine();
+            } catch(e) {
+                console.log("the available createEngine function failed. Creating the default engine instead");
+                engine = createDefaultEngine();
             }
+            if (!engine) throw 'engine should not be null.';
+            scene = createScene(footprint);
+            sceneToRender = scene;
+
+            engine.runRenderLoop(function () {
+                if (sceneToRender) {
+                    sceneToRender.render();
+                }
+            });
+        }
+
+
+        var map = L.map('map').setView([36.522881, -112.632666], 9);
+
+        L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw', {
+            maxZoom: 18,
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+                '<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            id: 'mapbox/streets-v11',
+            tileSize: 512,
+            zoomOffset: -1
+        }).addTo(map);
+
+        L.marker([36.474307, -113.366382]).addTo(map).on('click', function(e) {
+            startScene("left.png")
         });
 
-        // Resize
-        window.addEventListener("resize", function () {
-            engine.resize();
+        L.marker([36.522881, -112.632666]).addTo(map).on('click', function(e) {
+            startScene("middle.png")
         });
+
+        L.marker([36.474307, -111.85773]).addTo(map).on('click', function(e) {
+            startScene("right.png")
+        });
+
     </script>
 </body>
 </html>
